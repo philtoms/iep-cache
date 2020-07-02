@@ -1,0 +1,38 @@
+{
+  "name": "iep-cache",
+  "version": "1.0.0",
+  "author": "Phil Toms <phil.toms@hotmail.co.uk>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/philtoms/iep-cache.git"
+  },
+  "main": "src/index.js",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --loader ./index --experimental-specifier-resolution=node ./node_modules/.bin/ava --verbose"
+  },
+  "devDependencies": {
+    "ava": "^3.8.2"
+  },
+  "ava": {
+    "nodeArguments": [
+      "--no-warnings"
+    ],
+    "files": [
+      "**/*.test.mjs"
+    ]
+  },
+  "keywords": [
+    "iep",
+    "es modules",
+    "cache",
+    "redis",
+    "memcached",
+    "local"
+  ],
+  "bugs": {
+    "url": "https://github.com/philtoms/iep-cache/issues"
+  },
+  "homepage": "https://github.com/philtoms/iep-cache"
+}
