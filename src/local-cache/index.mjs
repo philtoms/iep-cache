@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { resolve } from 'path';
+import pubsub from './pubsub';
 
 // isolate private cache
 const __CACHE = Symbol('iep-cache');
@@ -9,11 +10,14 @@ const cache = globalThis[__CACHE];
 
 export default (
   entity,
-  { defaults = {}, persistUrl, persistKey, IEP_STR } = {},
-  log
+  { defaults = {}, persistUrl, entityPersistance, IEP_STR } = {},
+  log,
+  worker
 ) => {
+  const { publish, subscribe } = pubsub(worker);
   const path =
-    persistUrl && resolve(persistUrl, persistKey ? '' : `${entity}.json`);
+    persistUrl &&
+    resolve(persistUrl, entityPersistance === 'key' ? '' : `${entity}.json`);
 
   cache[entity] = cache[entity] || {
     data: defaults,
@@ -21,14 +25,22 @@ export default (
 
   try {
     const persistData = (persistKey) => {
-      const { data } = cache[entity];
-      if (persistUrl || persistKey) {
-        const json = persistKey
-          ? data[persistKey][IEP_STR] || JSON.stringify(data[persistKey])
-          : JSON.stringify(data);
+      let data;
+      let dataPath;
 
-        const jsonPath = persistKey ? resolve(path, persistKey) : path;
-        fs.writeFile(jsonPath, json, (err) => {
+      if (persistKey) {
+        data =
+          IEP_STR in cache[entity].data[persistKey]
+            ? cache[entity].data[persistKey][IEP_STR]
+            : cache[entity].data[persistKey];
+        dataPath = resolve(path, persistKey);
+      } else if (persistUrl) {
+        data = cache[entity].data;
+        dataPath = path;
+      }
+
+      if (entityPersistance) {
+        fs.writeFile(dataPath, JSON.stringify(data), (err) => {
           if (err) {
             throw err;
           }
@@ -48,32 +60,33 @@ export default (
 
     const get = (key) => cache[entity].data[key] || false;
 
-    const getAll = () => Object.entries(cache[entity]).map(({ data }) => data);
+    const getAll = () => cache[entity];
 
-    const set = (key, value) => {
+    const set = (key, value, broadcast = true) => {
       cache[entity].data[key] = { ...value, timestamp: Date.now() };
-      persistData(persistKey && key);
+      persistData(entityPersistance === 'key' && key);
+      if (broadcast) {
+        publish(entity, { set: [key, value, false] });
+      }
     };
 
     const remove = (key) => {
       Reflect.deleteProperty(cache[entity], key);
-      persistData(persistKey && key);
+      persistData(entityPersistance === 'key' && key);
     };
 
-    const update = (message) => {
+    subscribe(entity, (message) => {
       message.set && set(...message.set);
       message.remove && remove(...message.remove);
-    };
+    });
 
-    // key persisted data is not loaded until demand
-    if (!persistKey) loadData();
+    loadData();
 
     return {
       get,
       getAll,
       set,
       remove,
-      update,
     };
   } catch (err) {
     log.error('iep:local-cache', err);

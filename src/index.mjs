@@ -1,66 +1,73 @@
-export const IEP_STR = Symbol('iep-str');
+// don't export a symbol
+export const IEP_STR = 'iep-cache-str';
 
 const args = (process.argv || []).reduce((acc, arg) => {
   const [name, value] = arg.split('=');
   return { ...acc, [name]: value };
 }, {});
 
-const fromBool = (value) =>
+// promote true / false strings to Boolean
+const boolFixup = (value) =>
   ['true', 'false'].includes(value) ? JSON.parse(value) : value;
 
-export default (entity, opts = {}) => {
+export default (entity, opts = {}, worker = process) => {
   // params can come from env, opts, args or defaults - in that order
-  const logPath = fromBool(
+  const logModule = boolFixup(
     process.env.LOG_MODULE ||
       opts['log-module'] ||
-      args['log-module'] ||
-      './local-log.js'
+      args['--log-module'] ||
+      './local-log'
   );
 
-  const cachePath = fromBool(
+  const cacheModule = boolFixup(
     process.env.CACHE_MODULE ||
       opts['cache-module'] ||
-      args['cache-module'] ||
-      './local-cache.js'
+      args['--cache-module'] ||
+      './local-cache'
   );
 
-  const persistUrl = fromBool(
-    process.env.CACHE_PERSIST_DIR ||
+  const persistUrl = boolFixup(
+    process.env.CACHE_PERSIST_URL ||
       opts['cache-persist-url'] ||
-      args['cache-persist-url'] ||
+      args['--cache-persist-url'] ||
       ''
   );
 
-  const persistKey = fromBool(
-    process.env.CACHE_PERSIST_DIR ||
-      opts['cache-persist-key'] ||
-      args['cache-persist-key'] ||
-      false
+  const entityPersistance = boolFixup(
+    process.env[`${entity}_PERSISTANCE`] ||
+      opts[`${entity}-persistance`] ||
+      args[`--${entity}-persistance`] ||
+      'false'
   );
+
+  const lazyLoad = boolFixup(args[`--cache-lazy-load`] || 'false');
 
   let loaded;
   const cache = () =>
     loaded ||
-    (loaded = import(logPath)
+    (loaded = import(logModule)
       .then((module) => module.default || module)
       .then((log) =>
-        import(cachePath).then((module) => {
+        import(cacheModule).then((module) => {
           const cache = module.default || module;
           return cache(
             entity,
             {
               ...opts,
               IEP_STR,
-              persistKey,
               persistUrl,
+              entityPersistance,
             },
-            log
+            log,
+            worker
           );
         })
       ));
 
+  if (!lazyLoad) cache();
+
   // lazy load the cache after the pre-loader cycle has completed.
-  // Otherwise the dynamic import will force create a bogus singleton.
+  // - otherwise the import will force create a bogus singleton.
   return {
     get: async (...args) => (await cache()).get(...args),
     getAll: async (...args) => (await cache()).getAll(...args),
