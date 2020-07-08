@@ -28,5 +28,4 @@ The design has a publish-subscribe architecture and supports dynamically loaded 
 `process.env.CACHE_PERSIST_URL` or argv `--cache-persist-url` a URL resolved persistence endpoint (default: `file:///cached/`)
 `process.env.{entity}_PERSISTANCE` or argv `--{entity}-persistancey` one of `entity` or `key`.
 `process.env.CACHE_MODULE` or argv `--cache-module` an import specifier for dynamically loaded cache persistance.
-`process.env.LOG_MODULE` or argv `--log-module` an import specifier for dynamically loaded logging strategy.
 `process.env.CACHE_LAZY_LOAD` or argv `--cache-lazy-load` delay loading until first API request.

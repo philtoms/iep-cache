@@ -12,13 +12,6 @@ const boolFixup = (value) =>
 
 export default (entity, opts = {}, worker = process) => {
   // params can come from env, opts, args or defaults - in that order
-  const logModule = boolFixup(
-    process.env.LOG_MODULE ||
-      opts['log-module'] ||
-      args['--log-module'] ||
-      './local-log'
-  );
-
   const cacheModule = boolFixup(
     process.env.CACHE_MODULE ||
       opts['cache-module'] ||
@@ -45,24 +38,19 @@ export default (entity, opts = {}, worker = process) => {
   let loaded;
   const cache = () =>
     loaded ||
-    (loaded = import(logModule)
-      .then((module) => module.default || module)
-      .then((log) =>
-        import(cacheModule).then((module) => {
-          const cache = module.default || module;
-          return cache(
-            entity,
-            {
-              ...opts,
-              IEP_STR,
-              persistUrl,
-              entityPersistance,
-            },
-            log,
-            worker
-          );
-        })
-      ));
+    (loaded = import(cacheModule).then((module) => {
+      const cache = module.default || module;
+      return cache(
+        entity,
+        {
+          ...opts,
+          IEP_STR,
+          persistUrl,
+          entityPersistance,
+        },
+        worker
+      );
+    }));
 
   if (!lazyLoad) cache();
 

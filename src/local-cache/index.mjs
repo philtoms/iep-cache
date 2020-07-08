@@ -11,7 +11,6 @@ const cache = globalThis[__CACHE];
 export default (
   entity,
   { defaults = {}, persistUrl, entityPersistance, IEP_STR } = {},
-  log,
   worker
 ) => {
   const { publish, subscribe } = pubsub(worker);
@@ -33,6 +32,7 @@ export default (
           IEP_STR in cache[entity].data[persistKey]
             ? cache[entity].data[persistKey][IEP_STR]
             : cache[entity].data[persistKey];
+
         dataPath = resolve(path, persistKey);
       } else if (persistUrl) {
         data = cache[entity].data;
@@ -89,7 +89,7 @@ export default (
       remove,
     };
   } catch (err) {
-    log.error('iep:local-cache', err);
-    throw new Error('500');
+    err.message = `iep:local-cache - ${err.message}`;
+    throw err;
   }
 };
