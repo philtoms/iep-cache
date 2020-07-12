@@ -1,6 +1,6 @@
 import fs from 'fs';
 import { resolve } from 'path';
-import pubsub from './pubsub';
+import pubsub from 'iep-pubsub';
 
 // isolate private cache
 const __CACHE = Symbol('iep-cache');
@@ -10,10 +10,9 @@ const cache = globalThis[__CACHE];
 
 export default (
   entity,
-  { defaults = {}, persistUrl, entityPersistance, IEP_STR } = {},
-  worker
+  { defaults = {}, persistUrl, entityPersistance, IEP_STR } = {}
 ) => {
-  const { publish, subscribe } = pubsub(worker);
+  const { publish, subscribe } = pubsub();
   const path =
     persistUrl &&
     resolve(persistUrl, entityPersistance === 'key' ? '' : `${entity}.json`);
@@ -75,7 +74,7 @@ export default (
       persistData(entityPersistance === 'key' && key);
     };
 
-    subscribe(entity, (message) => {
+    subscribe(entity, (channel, message) => {
       message.set && set(...message.set);
       message.remove && remove(...message.remove);
     });

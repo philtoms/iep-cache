@@ -11,6 +11,9 @@
   "scripts": {
     "test": "node --loader ./index --experimental-specifier-resolution=node ./node_modules/.bin/ava --verbose"
   },
+  "dependencies": {
+    "iep-pubsub": "philtoms/iep-pubsub"
+  },
   "devDependencies": {
     "ava": "^3.8.2",
     "esm-fake-loader": "^1.1.3"

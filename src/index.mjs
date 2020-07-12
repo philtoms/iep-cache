@@ -10,7 +10,7 @@ const args = (process.argv || []).reduce((acc, arg) => {
 const boolFixup = (value) =>
   ['true', 'false'].includes(value) ? JSON.parse(value) : value;
 
-export default (entity, opts = {}, worker = process) => {
+export default (entity, opts = {}) => {
   // params can come from env, opts, args or defaults - in that order
   const cacheModule = boolFixup(
     process.env.CACHE_MODULE ||
@@ -40,16 +40,12 @@ export default (entity, opts = {}, worker = process) => {
     loaded ||
     (loaded = import(cacheModule).then((module) => {
       const cache = module.default || module;
-      return cache(
-        entity,
-        {
-          ...opts,
-          IEP_STR,
-          persistUrl,
-          entityPersistance,
-        },
-        worker
-      );
+      return cache(entity, {
+        ...opts,
+        IEP_STR,
+        persistUrl,
+        entityPersistance,
+      });
     }));
 
   if (!lazyLoad) cache();
