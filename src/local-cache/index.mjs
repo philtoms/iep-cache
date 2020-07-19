@@ -74,7 +74,7 @@ export default (
       persistData(entityPersistance === 'key' && key);
     };
 
-    subscribe(entity, (channel, message) => {
+    subscribe(entity, (message) => {
       message.set && set(...message.set);
       message.remove && remove(...message.remove);
     });
