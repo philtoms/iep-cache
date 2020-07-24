@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { resolve } from 'path';
+import path from 'path';
 import pubsub from 'iep-pubsub';
 
 // isolate private cache
@@ -10,12 +10,15 @@ const cache = globalThis[__CACHE];
 
 export default (
   entity,
-  { defaults = {}, persistUrl, entityPersistance, IEP_STR } = {}
+  { defaults = {}, persistUrl, entityPersistance, entityKey } = {}
 ) => {
   const { publish, subscribe } = pubsub();
-  const path =
+  const filePath =
     persistUrl &&
-    resolve(persistUrl, entityPersistance === 'key' ? '' : `${entity}.json`);
+    path.resolve(
+      persistUrl,
+      entityPersistance === 'key' ? '' : `${entity}.json`
+    );
 
   cache[entity] = cache[entity] || {
     data: defaults,
@@ -23,23 +26,19 @@ export default (
 
   try {
     const persistData = (persistKey) => {
-      let data;
-      let dataPath;
-
-      if (persistKey) {
-        data =
-          IEP_STR in cache[entity].data[persistKey]
-            ? cache[entity].data[persistKey][IEP_STR]
-            : cache[entity].data[persistKey];
-
-        dataPath = resolve(path, persistKey);
-      } else if (persistUrl) {
-        data = cache[entity].data;
-        dataPath = path;
-      }
-
       if (entityPersistance) {
-        fs.writeFile(dataPath, JSON.stringify(data), (err) => {
+        let data;
+        let dataPath;
+
+        if (persistKey) {
+          data = cache[entity].data[persistKey][entityKey];
+          dataPath = path.resolve(filePath, persistKey);
+        } else {
+          data = JSON.stringify(cache[entity].data);
+          dataPath = filePath;
+        }
+
+        fs.writeFile(dataPath, data, (err) => {
           if (err) {
             throw err;
           }
@@ -48,18 +47,29 @@ export default (
     };
 
     const loadData = () => {
-      if (!cache[entity].loaded && fs.existsSync(path)) {
-        const data = fs.readFileSync(path, 'utf8');
+      if (
+        !cache[entity].loaded &&
+        fs.existsSync(filePath) &&
+        fs.statSync(filePath).isFile()
+      ) {
+        const data = fs.readFileSync(filePath, 'utf8');
         if (data) {
-          cache[entity].data = JSON.parse(data);
+          cache[entity].data =
+            entityPersistance === 'key'
+              ? // restore cache identity from file stats
+                {
+                  [entityKey]: data,
+                  timestamp: fs.statSync(filePath).mtime.getTime(),
+                }
+              : JSON.parse(data);
           cache[entity].loaded = true;
         }
       }
     };
 
-    const get = (key) => cache[entity].data[key] || false;
+    const get = (key) => cache[entity].data[key] || {};
 
-    const getAll = () => cache[entity];
+    const getAll = () => cache[entity] || {};
 
     const set = (key, value, broadcast = true) => {
       cache[entity].data[key] = { ...value, timestamp: Date.now() };

@@ -1,5 +1,7 @@
 // don't export a symbol
-export const IEP_STR = 'iep-cache-str';
+import path from 'path';
+
+const defaultPersistUrl = path.resolve(process.env.PWD, 'iep-cache');
 
 const args = (process.argv || []).reduce((acc, arg) => {
   const [name, value] = arg.split('=');
@@ -10,30 +12,55 @@ const args = (process.argv || []).reduce((acc, arg) => {
 const boolFixup = (value) =>
   ['true', 'false'].includes(value) ? JSON.parse(value) : value;
 
+// and the reverse for boolean for the above!
+const bool = (value) =>
+  [true, false].includes(value) ? value.toString() : value;
+
 export default (entity, opts = {}) => {
-  // params can come from env, opts, args or defaults - in that order
+  // params can come from entity bound, then default, argv and opts - in that order
   const cacheModule = boolFixup(
-    process.env.CACHE_MODULE ||
-      opts['cache-module'] ||
+    args[`--${entity}-cache-module`] ||
+      opts.cacheModule ||
+      opts[`--${entity}-cache-module`] ||
       args['--cache-module'] ||
       './local-cache'
   );
 
   const persistUrl = boolFixup(
-    process.env.CACHE_PERSIST_URL ||
-      opts['cache-persist-url'] ||
+    args[`--${entity}-persist-url`] ||
+      opts.persistUrl ||
+      opts[`--${entity}-persist-url`] ||
       args['--cache-persist-url'] ||
-      ''
+      opts['--cache-persist-url'] ||
+      defaultPersistUrl
   );
 
   const entityPersistance = boolFixup(
-    process.env[`${entity}_PERSISTANCE`] ||
-      opts[`${entity}-persistance`] ||
-      args[`--${entity}-persistance`] ||
-      'false'
+    args[`--${entity}-persistance`] ||
+      bool(opts.persistance) ||
+      bool(opts[`--${entity}-persistance`]) ||
+      args['--cache-persistance'] ||
+      opts['--cache-persistance'] ||
+      'entity'
   );
 
-  const lazyLoad = boolFixup(args[`--cache-lazy-load`] || 'false');
+  const entityKey = boolFixup(
+    args[`--${entity}-key`] ||
+      opts.entityKey ||
+      opts[`--${entity}-entity-key`] ||
+      args['--cache-entity-key'] ||
+      opts['--cache-entity-key'] ||
+      'data'
+  );
+
+  const lazyLoad = boolFixup(
+    args[`--${entity}-lazy-load`] ||
+      opts.lazyLoad ||
+      opts[`--${entity}-lazy-load`] ||
+      args['--cache-lazy-load'] ||
+      opts['--cache-lazy-load'] ||
+      'false'
+  );
 
   let loaded;
   const cache = () =>
@@ -42,9 +69,9 @@ export default (entity, opts = {}) => {
       const cache = module.default || module;
       return cache(entity, {
         ...opts,
-        IEP_STR,
         persistUrl,
         entityPersistance,
+        entityKey,
       });
     }));
 
