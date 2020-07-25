@@ -13,27 +13,26 @@ The primary usage of this package is to support IEP loader caching requirements 
 ```javascript
 import cache, { IEP_DATA } from 'iep-cache';
 
-const entity = 'my-entity-key';
-
 // cache strategy options (showing defaults)
 const opts = {
-  persistance: 'entity', // 'key' || false
+  persistance: 'set', // 'entity' || false
   persistUrl: `file:///${process.env.PWD}/iep-cache/my-entity.json`, // valid URL
   cacheModule: './local-cache', // valid import specifier
   lazyLoad: false, // set to true for esm loader usage
-  entityKey: 'data',
+  entityKey: 'value',
   defaults: {},
+  purge: false, // true
 };
 
-const myCache = cache(entity, opts);
+const myCache = cache('my-entity-set', opts);
 
-// set up independent cache strategies for entities e1, e2, e3 and e4...
+// set up independent cache strategies for entity sets e1, e2, e3 and e4...
 
 // default options
-const cache1 = cache('e1');
+const cacheE1 = cache('e1');
 
 // no persistance and default entities
-const cache2 = cache('e2', {
+const cacheE2 = cache('e2', {
   persistance: false,
   defaults: { my: { data: [] } },
 });
@@ -48,12 +47,13 @@ const cache4 = cache('e4', {
 });
 
 (async () => {
-  cache1.set('id1', { some: { data: 123 } });
-  await cache1.get('id1'); // { some: { data: 123 }, timestamp: 1595587282003 }
-  await cache1.getAll(); // {id1: { some: { data: 123 }, timestamp: 1595587282003 }}
-  cache1.remove('id1');
+  cacheE1.set('id1', { some: { data: 123 } });
+  await cacheE1.get('id1'); // { some: { data: 123 }}
+  await cacheE1.getEntity('id1'); // { value: {some: { data: 123 }}, timestamp: 1595587282003 }
+  await cacheE1.getSet(); // [{id: id1, value: {some: { data: 123 }}, timestamp: 1595587282003 }]
+  cacheE1.remove('id1');
 
-  const cache2 = cache('my-entity');
+  const cacheE2 = cache('my-entity');
 })();
 ```
 
@@ -85,6 +85,7 @@ For a cache entity `e` - as in `cache('e', options)` - these config options....
 | --e-lazy-load    | lazyLoad `||` --e-lazyLoad        |
 | --e-entity-key   | entityKey `||` --e-entity-key     |
 |                  | defaults (default `{}`)           |
+|                  | purge                             |
 
 override these (configurable) defaults...
 
@@ -102,5 +103,6 @@ override these (configurable) defaults...
 - entityKey - the entity key name under which the data will be located.
 - persistUrl - the URL endpoint of the persistance handler.
 - cacheModule - an import specifier resolving to the cache handler module.
-- lazyLoad - load on first entity access request
-- defaults - ,
+- lazyLoad - load on first entity access request.
+- defaults - a set of default entity values.
+- purge - remove all entity entries from memory. Does not touch persisted entries.

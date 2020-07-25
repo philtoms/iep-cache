@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import pubsub from 'iep-pubsub';
+import timestamp from './timestamp.mjs';
+
+const defaultPersistUrl = path.resolve(process.env.PWD, 'iep-cache');
 
 // isolate private cache
 const __CACHE = Symbol('iep-cache');
@@ -10,23 +13,31 @@ const cache = globalThis[__CACHE];
 
 export default (
   entity,
-  { defaults = {}, persistUrl, entityPersistance, entityKey } = {}
+  {
+    defaults = {},
+    persistance = 'entity',
+    persistUrl = defaultPersistUrl,
+    entityKey = 'value',
+    purge = false,
+  } = {}
 ) => {
   const { publish, subscribe } = pubsub();
   const filePath =
     persistUrl &&
-    path.resolve(
-      persistUrl,
-      entityPersistance === 'key' ? '' : `${entity}.json`
-    );
+    path.resolve(persistUrl, persistance === 'key' ? '' : `${entity}.json`);
 
-  cache[entity] = cache[entity] || {
-    data: defaults,
+  cache[entity] = (!purge && cache[entity]) || {
+    data: Object.entries(defaults).reduce(
+      (acc, [id, value]) => ({ ...acc, [id]: { id, value, timestamp: 0 } }),
+      {}
+    ),
   };
+
+  cache[entity].loaded = purge ? false : cache[entity].loaded;
 
   try {
     const persistData = (persistKey) => {
-      if (entityPersistance) {
+      if (persistance) {
         let data;
         let dataPath;
 
@@ -46,42 +57,68 @@ export default (
       }
     };
 
-    const loadData = () => {
-      if (
-        !cache[entity].loaded &&
-        fs.existsSync(filePath) &&
-        fs.statSync(filePath).isFile()
-      ) {
-        const data = fs.readFileSync(filePath, 'utf8');
+    const loadData = (persistKey) => {
+      const load = persistKey || !cache[entity].loaded;
+      const dataPath = persistKey
+        ? path.resolve(filePath, persistKey)
+        : filePath;
+
+      if (load && fs.existsSync(dataPath) && fs.statSync(dataPath).isFile()) {
+        const data = fs.readFileSync(dataPath, 'utf8');
         if (data) {
           cache[entity].data =
-            entityPersistance === 'key'
+            persistance === 'key'
               ? // restore cache identity from file stats
                 {
-                  [entityKey]: data,
-                  timestamp: fs.statSync(filePath).mtime.getTime(),
+                  ...cache[entity].data,
+                  [persistKey]: {
+                    id: persistKey,
+                    [entityKey]: data,
+                    timestamp: fs.statSync(dataPath).mtime.getTime(),
+                  },
                 }
               : JSON.parse(data);
+
           cache[entity].loaded = true;
         }
       }
     };
 
-    const get = (key) => cache[entity].data[key] || {};
+    const get = (id) => getEntry(id)[entityKey];
 
-    const getAll = () => cache[entity] || {};
+    const getEntry = (id) => {
+      if (cache[entity].data[id]) {
+        return cache[entity].data[id];
+      }
+      if (persistance === 'key') {
+        loadData(id);
+      }
+      return (
+        cache[entity].data[id] || {
+          id,
+          [entityKey]: undefined,
+          timestamp: 0,
+        }
+      );
+    };
 
-    const set = (key, value, broadcast = true) => {
-      cache[entity].data[key] = { ...value, timestamp: Date.now() };
-      persistData(entityPersistance === 'key' && key);
+    const getAll = () => Object.values(cache[entity].data);
+
+    const set = (id, value, broadcast = true) => {
+      cache[entity].data[id] = {
+        id,
+        [entityKey]: value,
+        timestamp: timestamp(),
+      };
+      persistData(persistance === 'key' && id);
       if (broadcast) {
-        publish(entity, { set: [key, value, false] });
+        publish(entity, { set: [id, value, false] });
       }
     };
 
-    const remove = (key) => {
-      Reflect.deleteProperty(cache[entity], key);
-      persistData(entityPersistance === 'key' && key);
+    const remove = (id) => {
+      Reflect.deleteProperty(cache[entity].data, id);
+      persistData(persistance === 'key' && id);
     };
 
     subscribe(entity, (message) => {
@@ -93,6 +130,7 @@ export default (
 
     return {
       get,
+      getEntry,
       getAll,
       set,
       remove,

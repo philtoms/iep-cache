@@ -1,4 +1,3 @@
-// don't export a symbol
 import path from 'path';
 
 const defaultPersistUrl = path.resolve(process.env.PWD, 'iep-cache');
@@ -35,7 +34,7 @@ export default (entity, opts = {}) => {
       defaultPersistUrl
   );
 
-  const entityPersistance = boolFixup(
+  const persistance = boolFixup(
     args[`--${entity}-persistance`] ||
       bool(opts.persistance) ||
       bool(opts[`--${entity}-persistance`]) ||
@@ -50,7 +49,7 @@ export default (entity, opts = {}) => {
       opts[`--${entity}-entity-key`] ||
       args['--cache-entity-key'] ||
       opts['--cache-entity-key'] ||
-      'data'
+      'value'
   );
 
   const lazyLoad = boolFixup(
@@ -70,7 +69,7 @@ export default (entity, opts = {}) => {
       return cache(entity, {
         ...opts,
         persistUrl,
-        entityPersistance,
+        persistance,
         entityKey,
       });
     }));
@@ -81,9 +80,9 @@ export default (entity, opts = {}) => {
   // - otherwise the import will force create a bogus singleton.
   return {
     get: async (...args) => (await cache()).get(...args),
+    getEntry: async (...args) => (await cache()).getEntry(...args),
     getAll: async (...args) => (await cache()).getAll(...args),
     set: async (...args) => (await cache()).set(...args),
     remove: async (...args) => (await cache()).remove(...args),
-    update: async (...args) => (await cache()).update(...args),
   };
 };
