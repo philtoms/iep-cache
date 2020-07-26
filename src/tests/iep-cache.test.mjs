@@ -5,8 +5,11 @@ import mock from 'cache-module?__fake=mock({get: mock()})';
 const sut = () =>
   import('../index.mjs?__fake=reload').then((module) => module.default);
 
-test.serial('lazy load cache module', async (t) => {
+test.serial.beforeEach(() => {
   mock.reset();
+});
+
+test.serial('lazy load cache module', async (t) => {
   const cache = await sut();
 
   const testCache = await cache('test', {
@@ -23,7 +26,6 @@ test.serial('lazy load cache module', async (t) => {
 });
 
 test.serial('immediately load cache module', async (t) => {
-  mock.reset();
   const cache = await sut();
 
   cache('test', { cacheModule: 'cache-module', lazyLoad: false });
@@ -34,7 +36,6 @@ test.serial('immediately load cache module', async (t) => {
 });
 
 test.serial('alternate option syntax', async (t) => {
-  mock.reset();
   const cache = await sut();
 
   cache('test', {
@@ -47,7 +48,6 @@ test.serial('alternate option syntax', async (t) => {
 });
 
 test.serial('pass entity key through to cache module', async (t) => {
-  mock.reset();
   const cache = await sut();
 
   await cache('test', {
@@ -59,7 +59,6 @@ test.serial('pass entity key through to cache module', async (t) => {
 });
 
 test.serial('pass opts through to cache module', async (t) => {
-  mock.reset();
   const cache = await sut();
 
   await cache('test', {
@@ -77,7 +76,6 @@ test.serial('pass opts through to cache module', async (t) => {
 });
 
 test.serial('pass argv through to cache module', async (t) => {
-  mock.reset();
   process.argv = ['--cache-module=cache-module', '--cache-persist-url=false'];
   const cache = await sut();
 
@@ -91,7 +89,6 @@ test.serial('pass argv through to cache module', async (t) => {
 });
 
 test.serial('merge argv and opts', async (t) => {
-  mock.reset();
   process.argv = ['--cache-module=cache-module', '--cache-persist-url=false'];
   const cache = await sut();
 
@@ -106,7 +103,6 @@ test.serial('merge argv and opts', async (t) => {
 });
 
 test.serial('entity opts precedence over defaults', async (t) => {
-  mock.reset();
   const cache = await sut();
 
   await cache('test', {
@@ -119,7 +115,6 @@ test.serial('entity opts precedence over defaults', async (t) => {
 });
 
 test.serial('argv precedence over opts', async (t) => {
-  mock.reset();
   process.argv = ['--cache-module=cache-module', '--cache-persist-url=there'];
   const cache = await sut();
 
