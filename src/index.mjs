@@ -7,6 +7,14 @@ const args = (process.argv || []).reduce((acc, arg) => {
   return { ...acc, [name]: value };
 }, {});
 
+const strip = (opts) =>
+  Object.entries(opts)
+    .filter(
+      ([key]) =>
+        !key.startsWith('--') && !['lazyLoad', 'cacheModule'].includes(key)
+    )
+    .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+
 // promote true / false strings to Boolean
 const boolFixup = (value) =>
   ['true', 'false'].includes(value) ? JSON.parse(value) : value;
@@ -22,13 +30,14 @@ export default (entity, opts = {}) => {
       opts.cacheModule ||
       opts[`--${entity}-cache-module`] ||
       args['--cache-module'] ||
+      opts[`--cache-module`] ||
       './local-cache'
   );
 
   const persistUrl = boolFixup(
     args[`--${entity}-persist-url`] ||
-      opts.persistUrl ||
-      opts[`--${entity}-persist-url`] ||
+      bool(opts.persistUrl) ||
+      bool(opts[`--${entity}-persist-url`]) ||
       args['--cache-persist-url'] ||
       opts['--cache-persist-url'] ||
       defaultPersistUrl
@@ -74,6 +83,7 @@ export default (entity, opts = {}) => {
       });
     }));
 
+  opts = strip(opts);
   if (!lazyLoad) cache();
 
   // lazy load the cache after the pre-loader cycle has completed.

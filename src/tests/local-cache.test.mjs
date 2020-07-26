@@ -1,7 +1,7 @@
 import test from 'ava';
-import cache from './index.mjs';
+import cache from '../local-cache/index.mjs';
 
-import './timestamp.mjs?__fake=mock(1)';
+import '../local-cache/timestamp.mjs?__fake=mock(1)';
 import 'path?__fake=./mocks/path.mjs';
 import fs from 'fs?__fake=./mocks/fs.mjs';
 import pubsub, { registered } from 'iep-pubsub?__fake=./mocks/iep-pubsub.mjs';
